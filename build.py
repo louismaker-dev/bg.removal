@@ -15,5 +15,7 @@ PyInstaller.__main__.run([
     "--collect-submodules=onnx",
     "--hidden-import=bgremover.optimize",
     "--hidden-import=bgremover.studio",
+    "--hidden-import=bgremover.updater",
+    "--add-data=bgremover/build.txt;bgremover",
     "--hidden-import=clr",
 ])

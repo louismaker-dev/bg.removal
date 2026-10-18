@@ -237,3 +237,7 @@ table.csv td,table.csv th{border:1px solid var(--line);padding:4px 6px;text-alig
 .page-thumb .pn{position:absolute;left:3px;bottom:2px;font-size:10px;background:#000a;color:#fff;border-radius:4px;padding:0 4px}
 .page-add{height:58px;width:44px;border-radius:7px;border:1px dashed var(--line);background:var(--card);color:var(--muted);display:grid;place-items:center;flex:none}
 .page-add:hover{border-color:var(--accent);color:var(--text)}
+
+.update-banner{display:flex;align-items:center;gap:14px;background:linear-gradient(120deg,#2b1f6b,#123a56);border:1px solid #7c5cff66;border-radius:14px;padding:14px 16px;margin-top:16px;max-width:620px}
+.update-banner>span i{width:26px;height:26px;color:#c7b9ff}
+.update-banner>div{flex:1}

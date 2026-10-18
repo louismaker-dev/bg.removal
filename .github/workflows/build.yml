@@ -40,6 +40,17 @@ jobs:
       - name: Check app imports
         run: python -c "import webview; from bgremover.studio import Api, web_dir; assert (web_dir()/'index.html').exists(); print(Api().info())"
 
+      - name: Stamp build number
+        shell: pwsh
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          $v = python -c "from bgremover.version import VERSION; print(VERSION)"
+          "v$v.${{ github.run_number }}" | Out-File -Encoding ascii -NoNewline bgremover/build.txt
+          $notes = ("$env:MSG" -split "Co-Authored-By")[0].Trim()
+          if (-not $notes) { $notes = "Maintenance build" }
+          "## What's new`n`n$notes`n`n---`nDownload **EGStudio-win64.zip**, unzip it anywhere and run ``EGStudio.exe``. Already installed? The app offers this update by itself." | Out-File -Encoding utf8 release_notes.md
+
       - name: Build exe
         run: python build.py
 
@@ -91,8 +102,6 @@ jobs:
         with:
           tag_name: v${{ steps.ver.outputs.version }}.${{ github.run_number }}
           name: EG Studio ${{ steps.ver.outputs.version }} (build ${{ github.run_number }})
-          body: |
-            Download **EGStudio-win64.zip**, unzip it anywhere, and run `EGStudio.exe`.
-            Offline listing-image editor with AI background removal. The AI model downloads once on first use.
+          body_path: release_notes.md
           files: EGStudio-win64.zip
           make_latest: true

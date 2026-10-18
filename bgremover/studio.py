@@ -70,8 +70,36 @@ class Api:
         self._cancel = False
 
     # --------------------------------------------------------------- info
+    # -------------------------------------------------------------- updates
+    def check_update(self):
+        from bgremover import updater
+        try:
+            return {"ok": True, **updater.check()}
+        except Exception as e:  # noqa: BLE001 - offline is normal
+            return {"ok": False, "error": str(e), "current": updater.current_tag()}
+
+    def install_update(self, url: str):
+        from bgremover import updater
+        try:
+            updater.install(url, eng.app_dir(), lambda m, f: self._log(m, f))
+            self._log("Restarting…", -1)
+            threading.Timer(1.0, self._quit).start()
+            return {"ok": True}
+        except Exception as e:  # noqa: BLE001
+            traceback.print_exc()
+            self._log("", -1)
+            return {"ok": False, "error": str(e)}
+
+    def _quit(self):
+        try:
+            if self._window:
+                self._window.destroy()
+        finally:
+            os._exit(0)
+
     def info(self):
-        return {"version": VERSION, "device": self._engine.device,
+        from bgremover import updater
+        return {"version": VERSION, "build": updater.current_tag(), "device": self._engine.device,
                 "models": {k: eng.model_ready(k) for k in eng.MODELS},
                 "sizes": {k: v[1] for k, v in eng.MODELS.items()},
                 "settings": self._load_settings()}

@@ -54,6 +54,7 @@ window.MAIN = (() => {
       grid.append(card);
     });
     U.hydrateIcons($('#home'));
+    UPD.banner();
   }
   const hideHome = () => { $('#home').classList.add('hidden'); setTimeout(() => { window.dispatchEvent(new Event('resize')); E.fit(); }, 30); };
 
@@ -163,13 +164,16 @@ window.MAIN = (() => {
     const inf = await API.getInfo(true);
     const g = h('input', { type: 'checkbox' }); g.checked = (inf.settings && inf.settings.use_gpu) !== false;
     const snap = h('input', { type: 'checkbox' }); snap.checked = !window.SNAP_OFF;
+    const upd = h('input', { type: 'checkbox' }); upd.checked = !U.lsGet('eg_no_update_check');
     const body = h('div',
       h('label.check', g, 'Use graphics card for AI (Intel Iris Xe / NVIDIA / AMD)'),
       h('label.check', snap, 'Snap objects to page and each other'),
-      h('div.note', `Version ${esc(inf.version)} · AI running on: ${esc(inf.device)} · Models: full ${inf.models.full ? '✓' : '✗ not downloaded'}, lite ${inf.models.lite ? '✓' : '✗ not downloaded'}`));
+      h('label.check', upd, 'Check for updates when the app opens'),
+      h('div.note', `Version ${esc(inf.build || inf.version)} · AI running on: ${esc(inf.device)} · Models: full ${inf.models.full ? '✓' : '✗ not downloaded'}, lite ${inf.models.lite ? '✓' : '✗ not downloaded'}`));
     const ok = await U.modal({ title: 'Settings', body, buttons: [{ label: 'Cancel', value: false }, { label: 'Save', value: true, primary: true }] });
     if (!ok) return;
     window.SNAP_OFF = !snap.checked; U.lsSet('eg_snap_off', window.SNAP_OFF ? '1' : '');
+    U.lsSet('eg_no_update_check', upd.checked ? '' : '1');
     await API.call('save_settings', { use_gpu: g.checked });
     U.toast('Settings saved', 'ok');
   }
@@ -388,7 +392,7 @@ window.MAIN = (() => {
       const a = e.target.closest('button'); if (!a) return;
       menu.classList.remove('open');
       ({ new: showHome, open: openProject, save: () => saveProject(false), saveas: () => saveProject(true),
-        resize: resizeDialog, export: exportDialog, settings: settingsDialog, keys: shortcutsDialog })[a.dataset.act]();
+        resize: resizeDialog, export: exportDialog, settings: settingsDialog, keys: shortcutsDialog, update: () => UPD.check({ silent: false }) })[a.dataset.act]();
     };
     $('#docName').addEventListener('change', () => { dirty = true; updateTitle(); autosave(); });
     $$('[data-home]').forEach(b => b.onclick = async () => {
@@ -418,6 +422,7 @@ window.MAIN = (() => {
 
     API.getInfo().then(i => API.setDevice(i.device === 'CPU' && !i.models.full && !i.models.lite ? 'ready' : i.device)).catch(() => {});
     showHome();
+    setTimeout(() => UPD.check({ silent: true }), 4000);
   }
 
   return { init, showHome, newDesign, resizeDialog, exportDialog, saveProject, openProject, openDoc, SIZES };
