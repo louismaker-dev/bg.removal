@@ -1,7 +1,7 @@
 /* Canvas editor core: page, zoom/pan, history, selection, snapping, export. */
 window.E = (() => {
   const PROPS = ['id', 'name', 'role', 'egLocked', 'srcOriginal', 'srcCut', 'bgRemoved', 'outline',
-    'adjust', 'radius', 'selectable', 'evented', 'lockMovementX', 'lockMovementY', 'lockScalingX',
+    'adjust', 'radius', 'crop', 'selectable', 'evented', 'lockMovementX', 'lockMovementY', 'lockScalingX',
     'lockScalingY', 'lockRotation', 'hasControls', 'visible', 'egType'];
   const ACCENT = '#7c5cff';
 

@@ -276,7 +276,7 @@ window.PANELS = (() => {
       } catch (e) { /* ignore */ }
       const label = o.type === 'textbox' ? (o.text || '').slice(0, 40) : o.name;
       const row = h('div.layer' + (activeSet.has(o) ? '.sel' : ''), { draggable: true }, th,
-        h('div.nm', label, h('small', o.type === 'textbox' ? 'Text' : (o.role === 'product' ? 'Product' : (o.role === 'bgimage' ? 'Background photo' : o.type)))), vis, lk);
+        h('div.nm', label, h('small', o.type === 'textbox' ? 'Text' : (o.role === 'product' ? 'Product' : (o.role === 'bgimage' ? 'Background photo' : ({ image: 'Image', group: 'Group', rect: 'Shape', circle: 'Shape', ellipse: 'Shape', triangle: 'Shape', polygon: 'Shape', path: 'Shape', line: 'Line' })[o.type] || 'Element')))), vis, lk);
       row.onclick = () => { if (o.selectable !== false && o.visible) E.select(o); };
       row.ondragstart = () => { dragId = o.id; };
       row.ondragover = e => { e.preventDefault(); row.classList.add('dragover'); };

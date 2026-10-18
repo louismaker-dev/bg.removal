@@ -145,6 +145,7 @@ window.CTX = (() => {
       g1.append(btn(icon('scan') + 'Outline', 'Sticker outline around the cut-out', e => outlinePop(e.currentTarget, o)));
       g1.append(btn(icon('crop') + 'Trim', 'Trim empty space around the cut-out', () => trim(o)));
     }
+    g1.append(btn(icon('crop') + 'Crop', 'Crop the photo', e => cropPop(e.currentTarget, o)));
     g1.append(btn(icon('blend') + 'Shadow', 'Drop shadow', e => shadowPop(e.currentTarget, o)));
     g1.append(btn(icon('square') + 'Corners', 'Rounded corners', e => {
       U.popover(e.currentTarget, U.slider('Corner radius', 0, 50, 1, o.radius || 0, (v, f) => { o.radius = v; FX.applyRadius(o); R(); if (f) E.commit(); }, v => v + '%'));
@@ -176,6 +177,15 @@ window.CTX = (() => {
     box.append(U.slider('Blur', 0, 1, 0.01, a.blur || 0, (v, f) => FX.setAdjust(o, { blur: v }, f), pct));
     box.append(U.slider('Transparency', 0, 1, 0.01, o.opacity, (v, f) => { o.opacity = v; R(); if (f) E.commit(); }, pct));
     box.append(h('button.chip-btn', { onclick: () => { o.adjust = {}; FX.applyAdjust(o); R(); E.commit(); U.closePop(); } }, 'Reset'));
+    U.popover(anchor, box);
+  }
+
+  function cropPop(anchor, o) {
+    const c = { l: 0, t: 0, r: 0, b: 0, ...(o.crop || {}) };
+    const box = h('div', h('h4', 'Crop (% of photo)'));
+    const s = (label, k) => U.slider(label, 0, 90, 1, c[k], (v, f) => { c[k] = v; if (c.l + c.r > 95) c[k] = 95 - (k === 'l' ? c.r : c.l); if (c.t + c.b > 95) c[k] = 95 - (k === 't' ? c.b : c.t); FX.setCrop(o, { ...c }, f); }, v => v + '%');
+    box.append(s('Left', 'l'), s('Right', 'r'), s('Top', 't'), s('Bottom', 'b'));
+    box.append(h('button.chip-btn', { onclick: () => { FX.setCrop(o, null, true); U.closePop(); } }, 'Reset crop'));
     U.popover(anchor, box);
   }
 
@@ -326,7 +336,7 @@ window.CTX = (() => {
 
   // ------------------------------------------------------------ common
   function renderCommon(b, o) {
-    const pos = btn(icon('align-center-horizontal') + 'Position', 'Align & arrange', e => {
+    const pos = btn('i:align-center-horizontal', 'Position: align & arrange', e => {
       const multi = o.type === 'activeselection';
       const box = h('div');
       box.append(h('h4', 'Arrange'));

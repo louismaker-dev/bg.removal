@@ -54,6 +54,20 @@ jobs:
           if ($p.ExitCode -ne 0 -or -not $r.StartsWith("OK")) { Write-Host "::error::$short"; exit 1 }
           Write-Host "::notice::$short"
 
+      - name: UI test the built exe (real window + WebView2)
+        shell: pwsh
+        run: |
+          $env:LOCALAPPDATA = "$PWD\selftest-data"
+          $p = Start-Process -FilePath "dist\EGStudio\EGStudio.exe" -ArgumentList "--uitest" -PassThru
+          $f = "$PWD\selftest-data\BgRemover\uitest.txt"
+          for ($i = 0; $i -lt 120 -and -not (Test-Path $f); $i++) { Start-Sleep -Seconds 1 }
+          Start-Sleep -Seconds 2
+          if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+          if (Test-Path $f) { $r = Get-Content $f -Raw } else { $r = "NO RESULT FILE"; if (Test-Path "$PWD\selftest-data\BgRemover\log.txt") { $r += " LOG: " + (Get-Content "$PWD\selftest-data\BgRemover\log.txt" -Raw) } }
+          Write-Host $r
+          $short = $r.Substring(0, [Math]::Min(1500, $r.Length)) -replace "`r?`n", " | "
+          Write-Host "::notice title=UI test::$short"
+
       - name: Zip
         shell: pwsh
         run: Compress-Archive -Path dist/EGStudio -DestinationPath EGStudio-win64.zip

@@ -294,6 +294,34 @@ window.MAIN = (() => {
     });
   }
 
+  // ------------------------------------------------------------ right-click menu
+  function setupContextMenu() {
+    E.canvas.on('mouse:down', opt => {
+      if (opt.e.button !== 2) return;
+      const t = opt.target;
+      if (t && t.role !== 'background' && !E.activeList().includes(t)) E.select(t);
+      const a = E.active();
+      const anchor = h('div', { style: { position: 'fixed', left: opt.e.clientX + 'px', top: opt.e.clientY + 'px', width: '1px', height: '1px' } });
+      document.body.append(anchor);
+      const item = (ic, label, fn, kbd = '') => h('button', { onclick: () => { U.closePop(); fn(); } , html: icon(ic) + `<span>${label}</span>` + (kbd ? `<kbd>${kbd}</kbd>` : '') });
+      const box = h('div.menu.open', { style: { position: 'static', display: 'block', boxShadow: 'none', border: 0, padding: 0, minWidth: '220px' } });
+      if (a) {
+        box.append(item('copy', 'Copy', () => E.copy(), 'Ctrl+C'), item('clipboard-paste', 'Paste', () => E.paste(), 'Ctrl+V'),
+          item('copy-plus', 'Duplicate', () => E.duplicate(), 'Ctrl+D'), item('trash-2', 'Delete', () => E.remove(), 'Del'), h('hr'),
+          item('bring-to-front', 'Bring to front', () => E.order('front'), 'Ctrl+]'), item('send-to-back', 'Send to back', () => E.order('back'), 'Ctrl+['),
+          item(a.egLocked ? 'lock-open' : 'lock', a.egLocked ? 'Unlock' : 'Lock', () => E.toggleLock()));
+        if (a.type === 'activeselection') box.append(item('group', 'Group', () => E.group(), 'Ctrl+G'));
+        if (a.type === 'group') box.append(item('ungroup', 'Ungroup', () => E.ungroup(), 'Ctrl+Shift+G'));
+        if (a.type === 'image' && !a.bgRemoved) box.append(h('hr'), item('scissors', 'Remove background', () => FX.removeBg(a)));
+      } else {
+        box.append(item('clipboard-paste', 'Paste', () => E.paste(), 'Ctrl+V'), item('upload', 'Add photo…', () => PANELS.pickImages()),
+          item('type', 'Add text', () => PANELS.show('text')), item('frame', 'Resize design…', resizeDialog));
+      }
+      const pop = U.popover(anchor, box, { onClose: () => anchor.remove() });
+      pop.style.padding = '6px';
+    });
+  }
+
   // ------------------------------------------------------------ init
   async function init() {
     U.hydrateIcons();
@@ -304,6 +332,7 @@ window.MAIN = (() => {
     CTX.init();
     setupDnD();
     setupKeys();
+    setupContextMenu();
 
     // top bar
     $('#btnHome').onclick = () => showHome();

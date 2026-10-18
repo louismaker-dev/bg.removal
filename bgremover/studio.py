@@ -290,8 +290,49 @@ def main() -> None:
                                 js_api=api, width=1440, height=900, min_size=(1100, 700),
                                 background_color="#16181d", text_select=False)
     api._window = win
+    if "--uitest" in sys.argv:
+        threading.Thread(target=_uitest, args=(win,), daemon=True).start()
     webview.start(http_server=True, debug="--debug" in sys.argv, private_mode=False,
                   storage_path=str(eng.app_dir() / "webview"))
+
+
+UI_TEST_JS = """
+(async () => {
+  const out = {};
+  try {
+    const t0 = Date.now();
+    while (!(window.MAIN && document.querySelector('.size-card')) && Date.now() - t0 < 30000) await new Promise(r => setTimeout(r, 200));
+    out.bridge = !!(window.pywebview && window.pywebview.api);
+    out.info = await API.call('info');
+    document.querySelector('.size-card').click();
+    await U.sleep(1500);
+    document.querySelector('.tpl-tile').click();
+    await U.sleep(3000);
+    out.objects = E.userObjects().length;
+    out.size = [E.W, E.H];
+    const url = await E.exportDataURL({ format: 'jpeg', multiplier: 0.3 });
+    out.exportLen = url.length;
+    const echo = await API.call('read_image', 'nope.png');
+    out.roundtrip = echo && echo.ok === false;
+  } catch (e) { out.err = String(e && e.stack || e); }
+  out.jsErrors = window.__errs || [];
+  return JSON.stringify(out);
+})()
+"""
+
+
+def _uitest(window) -> None:
+    out = eng.app_dir() / "uitest.txt"
+    try:
+        window.events.loaded.wait(60)
+        time.sleep(2)
+        res = window.evaluate_js(UI_TEST_JS)
+        out.write_text("RESULT " + str(res), encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        out.write_text("FAIL " + traceback.format_exc(), encoding="utf-8")
+    finally:
+        time.sleep(0.5)
+        window.destroy()
 
 
 def selftest() -> int:

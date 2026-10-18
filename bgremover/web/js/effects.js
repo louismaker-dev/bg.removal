@@ -52,6 +52,7 @@ window.FX = (() => {
     }
     await img.setSrc(url);
     img.set({ scaleX: sx, scaleY: sy });
+    applyCrop(img);
     img.setPositionByOrigin(c, 'center', 'center');
     applyAdjust(img);
     applyRadius(img);
@@ -112,6 +113,33 @@ window.FX = (() => {
     if (final) E.commit();
   }
 
+  // ---------------------------------------------------------- crop
+  // crop = {l,t,r,b} in % of the natural image
+  function applyCrop(img) {
+    const c = img.crop;
+    const el = img.getElement();
+    const nw = el.naturalWidth || el.width, nh = el.naturalHeight || el.height;
+    if (!c) { img.set({ cropX: 0, cropY: 0, width: nw, height: nh }); return; }
+    const x = nw * c.l / 100, y = nh * c.t / 100;
+    img.set({ cropX: x, cropY: y, width: Math.max(4, nw - x - nw * c.r / 100), height: Math.max(4, nh - y - nh * c.b / 100) });
+    img.dirty = true;
+  }
+  function setCrop(img, c, final) {
+    const before = img.getCenterPoint();
+    const oldW = img.width, oldH = img.height, oldX = img.cropX || 0, oldY = img.cropY || 0;
+    img.crop = c;
+    applyCrop(img);
+    // keep the visible pixels in place while cropping
+    const dx = ((img.cropX - oldX) + (img.width - oldW) / 2) * img.scaleX * (img.flipX ? -1 : 1);
+    const dy = ((img.cropY - oldY) + (img.height - oldH) / 2) * img.scaleY * (img.flipY ? -1 : 1);
+    const a = fabric.util.degreesToRadians(img.angle || 0);
+    img.setPositionByOrigin(new fabric.Point(before.x + dx * Math.cos(a) - dy * Math.sin(a), before.y + dx * Math.sin(a) + dy * Math.cos(a)), 'center', 'center');
+    applyRadius(img);
+    img.setCoords();
+    E.canvas.requestRenderAll();
+    if (final) E.commit();
+  }
+
   // ---------------------------------------------------------- corners
   function applyRadius(o) {
     const r = o.radius || 0;
@@ -164,6 +192,6 @@ window.FX = (() => {
     E.commit();
   }
 
-  return { removeBg, restoreOriginal, rebuildImage, makeOutline, setOutline, applyAdjust, setAdjust,
+  return { applyCrop, setCrop, removeBg, restoreOriginal, rebuildImage, makeOutline, setOutline, applyAdjust, setAdjust,
     FILTER_PRESETS, applyRadius, SHADOWS, setShadow, TEXT_FX, textEffect, aiOpts, setAiOpts };
 })();

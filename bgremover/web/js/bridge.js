@@ -8,10 +8,14 @@ window.API = (() => {
     if (ready) return ready;
     ready = new Promise(res => {
       if (native()) return res();
-      let done = false;
-      window.addEventListener('pywebviewready', () => { done = true; res(); });
-      // dev server (plain browser) never fires pywebviewready
-      setTimeout(() => { if (!done) res(); }, 1500);
+      window.addEventListener('pywebviewready', () => res());
+      // the dev server (plain browser) never fires pywebviewready
+      const dev = /[?&]dev\b/.test(location.search) || location.port === '8765';
+      if (dev) return res();
+      const t0 = Date.now();
+      const poll = setInterval(() => {
+        if (native() || Date.now() - t0 > 20000) { clearInterval(poll); res(); }
+      }, 100);
     });
     return ready;
   }
