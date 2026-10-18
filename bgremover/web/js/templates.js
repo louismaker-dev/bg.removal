@@ -85,7 +85,7 @@ window.TPL = (() => {
         K.rect({ left: sx, top: sy, width: sw * 1.02, height: sh * 1.02, rx: 40 * k, ry: 40 * k, fill: '#ffffff' });
         K.slot(sx, sy, sw * 0.92, sh * 0.92);
         const tx = side ? W * 0.76 : W / 2, ty0 = side ? H * 0.3 : H * 0.66;
-        K.text('PRODUCT NAME', { left: side ? W * 0.56 : tx, top: side ? H * 0.12 : H * 0.07, originX: side ? 'left' : 'center', textAlign: side ? 'left' : 'center', fontSize: 72, width: side ? 440 : 900, fontFamily: 'Montserrat', fontWeight: 900 });
+        K.text('PRODUCT NAME', { left: side ? W * 0.56 : tx, top: side ? H * 0.12 : H * 0.07, originX: side ? 'left' : 'center', textAlign: side ? 'left' : 'center', fontSize: 60, width: side ? 450 : 900, fontFamily: 'Montserrat', fontWeight: 900 });
         const feats = ['Fast charging', 'Long battery life', 'Lightweight design', '1 year warranty'];
         feats.forEach((f, i) => {
           const y = ty0 + i * (side ? 120 : 85) * k;
