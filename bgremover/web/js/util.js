@@ -151,6 +151,18 @@ window.U = (() => {
     }
     box.append(row);
     const sw = (list) => { const g = h('div.swatches'); list.forEach(c => g.append(h('button', { style: { background: c }, title: c, onclick: () => pick(c) }))); return g; };
+    // brand colours: saved once, available in every design
+    const brand = JSON.parse(localStorageGet('eg_brand') || '[]');
+    const bh = h('h4', 'Brand colours ');
+    const addB = h('button.chip-btn', { style: { marginLeft: '6px', height: '20px', fontSize: '11px' }, title: 'Save the current colour as a brand colour' }, '+ save current');
+    addB.onclick = () => { const c = toHex(inp.value); if (!brand.includes(c)) { brand.unshift(c); localStorageSet('eg_brand', JSON.stringify(brand.slice(0, 16))); } closePop(); colorPicker(anchor, c, onChange, { allowNone, docColors, onClose }); };
+    bh.append(addB);
+    box.append(bh);
+    if (brand.length) {
+      const g = sw(brand);
+      g.querySelectorAll('button').forEach((b, i) => b.oncontextmenu = e => { e.preventDefault(); brand.splice(i, 1); localStorageSet('eg_brand', JSON.stringify(brand)); b.remove(); });
+      box.append(g);
+    }
     if (allowNone) box.append(h('button.chip-btn', { style: { margin: '2px 0 8px' }, onclick: () => pick('transparent') }, 'No colour'));
     if (docColors.length) { box.append(h('h4', 'Document colours'), sw(docColors.slice(0, 16))); }
     if (recentColors.length) { box.append(h('h4', 'Recent'), sw(recentColors)); }

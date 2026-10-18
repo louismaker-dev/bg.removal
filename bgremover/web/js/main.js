@@ -240,7 +240,7 @@ window.MAIN = (() => {
       let src = await U.fileToDataURL(f);
       if (API.native() && f.size > 6e6) { /* very large photos: let Python downscale */ }
       src = await downscale(src, 4096);
-      PANELS.addUpload(src, f.name.replace(/\.[^.]+$/, ''));
+      PANELS.addUpload(src, f.name.replace(/\.[^.]+$/, ''), false);
       if (target) {
         const img = await fabric.FabricImage.fromURL(src);
         img.set({ name: f.name, srcOriginal: src });
@@ -268,7 +268,7 @@ window.MAIN = (() => {
       e.preventDefault(); depth = 0; $('#dropHint').classList.remove('show');
       const up = e.dataTransfer.getData('text/eg-upload');
       if (up) {
-        const u = PANELS.getUpload(up);
+        const u = await PANELS.getUpload(up);
         let target = E.canvas.findTarget(e);
         if (u) {
           if (target && (target.role === 'product' || target.egType === 'placeholder')) {

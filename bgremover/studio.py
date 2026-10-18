@@ -248,6 +248,53 @@ class Api:
         except Exception:  # noqa: BLE001
             return False
 
+    # ------------------------------------------------- uploads library
+    def _lib(self) -> Path:
+        d = eng.app_dir() / "library"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def library_add(self, data_url: str, name: str = "image"):
+        """Keep an uploaded image so it's there next time the app opens."""
+        raw = _b64_to_bytes(data_url)
+        ext = ".png" if data_url.startswith("data:image/png") else ".jpg"
+        uid = f"{int(time.time() * 1000)}"
+        safe = "".join(c for c in (name or "image") if c.isalnum() or c in " -_")[:60].strip() or "image"
+        p = self._lib() / f"{uid}__{safe}{ext}"
+        p.write_bytes(raw)
+        try:
+            im = _open_image(io.BytesIO(raw))
+            im.thumbnail((240, 240))
+            im.save(p.with_suffix(".thumb.png"), "PNG")
+        except Exception:  # noqa: BLE001
+            pass
+        return {"id": p.name, "name": safe}
+
+    def library_list(self):
+        out = []
+        for p in sorted(self._lib().glob("*__*.*"), reverse=True):
+            if p.name.endswith(".thumb.png"):
+                continue
+            t = p.with_suffix(".thumb.png")
+            thumb = ("data:image/png;base64," + base64.b64encode(t.read_bytes()).decode()) if t.exists() else ""
+            out.append({"id": p.name, "name": p.stem.split("__", 1)[-1], "thumb": thumb})
+        return out[:300]
+
+    def library_get(self, lid: str):
+        p = self._lib() / Path(lid).name
+        if not p.exists():
+            return {"ok": False}
+        mime = "image/png" if p.suffix == ".png" else "image/jpeg"
+        return {"ok": True, "data": f"data:{mime};base64," + base64.b64encode(p.read_bytes()).decode(),
+                "name": p.stem.split("__", 1)[-1]}
+
+    def library_delete(self, lid: str):
+        p = self._lib() / Path(lid).name
+        for q in (p, p.with_suffix(".thumb.png")):
+            if q.exists():
+                q.unlink()
+        return True
+
     def autosave(self, data: str, thumb: str = ""):
         d = eng.app_dir()
         (d / "autosave.egs").write_text(data, encoding="utf-8")

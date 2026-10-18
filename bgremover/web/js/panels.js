@@ -2,8 +2,7 @@
 window.PANELS = (() => {
   const { $, $$, h, icon } = U;
   let current = 'templates';
-  const uploads = []; // {id, src, name}
-
+  
   function show(name) {
     current = name;
     $$('#rail button').forEach(b => b.classList.toggle('active', b.dataset.panel === name));
@@ -126,21 +125,30 @@ window.PANELS = (() => {
   }
 
   // ------------------------------------------------------------ uploads
-  function renderUploads(body) {
+  // Uploads are kept in a library folder so they're still there next time.
+  let library = null;
+  const cache = new Map();
+  async function loadLibrary(force) {
+    if (!library || force) library = await API.call('library_list').catch(() => []) || [];
+    return library;
+  }
+  async function renderUploads(body) {
     body.append(h('button.big-btn', { onclick: pickImages }, h('span', { html: icon('upload') }), 'Upload images'));
-    if (!API.native()) body.append(h('div.note', 'You can also drag images onto the page, or paste with Ctrl+V.'));
-    else body.append(h('div.note', 'You can also drag images onto the page, or paste with Ctrl+V.'));
+    body.append(h('div.note', 'Drag images onto the page or paste with Ctrl+V. Uploads stay here for next time.'));
     const grid = h('div.uploads-grid');
     body.append(grid);
-    if (!uploads.length) grid.append(h('div.muted.small', { style: { gridColumn: '1/3', padding: '20px 0', textAlign: 'center' } }, 'No uploads yet'));
-    uploads.forEach(u => {
-      const del = h('button.del', { title: 'Remove from uploads', html: icon('x') });
-      del.onclick = e => { e.stopPropagation(); uploads.splice(uploads.indexOf(u), 1); show('uploads'); };
-      const t = h('div.tile', { title: u.name, onclick: () => E.addImage(u.src, { name: u.name }) }, h('img', { src: u.src }), del);
+    const lib = await loadLibrary();
+    if (!lib.length) grid.append(h('div.muted.small', { style: { gridColumn: '1/3', padding: '20px 0', textAlign: 'center' } }, 'No uploads yet'));
+    lib.forEach(u => {
+      const del = h('button.del', { title: 'Delete from uploads', html: icon('x') });
+      del.onclick = async e => { e.stopPropagation(); await API.call('library_delete', u.id); await loadLibrary(true); show('uploads'); };
+      const t = h('div.tile', { title: u.name, onclick: async () => { const g = await getUpload(u.id); if (g) E.addImage(g.src, { name: g.name }); } },
+        h('img', { src: u.thumb }), del);
       t.draggable = true;
       t.ondragstart = e => e.dataTransfer.setData('text/eg-upload', u.id);
       grid.append(t);
     });
+    U.hydrateIcons(grid);
   }
   async function pickImages() {
     if (API.native()) {
@@ -150,20 +158,33 @@ window.PANELS = (() => {
       try {
         for (const p of paths) {
           const r = await API.call('read_image', p, 4096);
-          if (r.ok) addUpload(r.data, r.name, true);
+          if (r.ok) await addUpload(r.data, r.name, true);
         }
       } finally { U.busy(false); }
     } else {
       $('#fileInput').click();
     }
   }
-  function addUpload(src, name, place = false) {
-    const u = { id: U.uid(), src, name: name || 'Image' };
-    uploads.unshift(u);
-    if (current === 'uploads') show('uploads');
-    if (place) return E.addImage(src, { name: u.name });
+  async function addUpload(src, name, place = false) {
+    name = name || 'Image';
+    let placed = null;
+    if (place) placed = await E.addImage(src, { name });
+    try {
+      const r = await API.call('library_add', src, name);
+      if (r && r.id) cache.set(r.id, { src, name });
+      await loadLibrary(true);
+      if (current === 'uploads') show('uploads');
+    } catch (e) { /* library is optional */ }
+    return placed;
   }
-  const getUpload = id => uploads.find(u => u.id === id);
+  async function getUpload(id) {
+    if (cache.has(id)) return cache.get(id);
+    const r = await API.call('library_get', id);
+    if (!r || !r.ok) return null;
+    const v = { src: r.data, name: r.name };
+    cache.set(id, v);
+    return v;
+  }
 
   // ------------------------------------------------------------ background
   function renderBackground(body) {
