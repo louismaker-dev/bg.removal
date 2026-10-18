@@ -314,6 +314,20 @@ UI_TEST_JS = """
     out.exportLen = url.length;
     const echo = await API.call('read_image', 'nope.png');
     out.roundtrip = echo && echo.ok === false;
+    if (out.info.models.lite) {
+      const c = document.createElement('canvas'); c.width = 1400; c.height = 1000;
+      const g = c.getContext('2d'); g.fillStyle = '#2a8c3c'; g.fillRect(0, 0, 1400, 1000);
+      g.fillStyle = '#e6402a'; g.beginPath(); g.arc(700, 500, 300, 0, 7); g.fill();
+      const src = c.toDataURL('image/jpeg', 0.95);
+      const img = await E.addImage(src, { name: 'test' });
+      E.select(img);
+      FX.setAiOpts({ quality: 'Fast' });
+      const t = Date.now();
+      await FX.removeBg(img);
+      out.cutSecs = (Date.now() - t) / 1000;
+      out.cutOk = !!img.bgRemoved;
+      out.device = (await API.call('progress')).device;
+    }
   } catch (e) { out.err = String(e && e.stack || e); }
   out.jsErrors = window.__errs || [];
   window.__uitest = JSON.stringify(out);
@@ -328,7 +342,7 @@ def _uitest(window) -> None:
         time.sleep(2)
         window.evaluate_js(UI_TEST_JS)
         res = None
-        for _ in range(120):
+        for _ in range(220):
             time.sleep(1)
             res = window.evaluate_js("window.__uitest || ''")
             if res:

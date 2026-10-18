@@ -225,3 +225,15 @@ table.csv td,table.csv th{border:1px solid var(--line);padding:4px 6px;text-alig
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:#3a3f4a;border-radius:6px;border:2px solid transparent;background-clip:padding-box}
 ::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- pages strip ---------- */
+#pagesBar{height:78px;background:var(--panel);border-top:1px solid var(--line);flex:none;overflow-x:auto;overflow-y:hidden}
+#pagesStrip{display:flex;align-items:center;gap:10px;height:100%;padding:0 14px}
+.page-thumb{position:relative;height:58px;min-width:44px;border-radius:7px;border:2px solid transparent;cursor:pointer;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none}
+.page-thumb img{height:54px;width:auto;max-width:120px;display:block}
+.page-thumb .ph{width:58px;height:100%;background:#fff}
+.page-thumb.cur{border-color:var(--accent)}
+.page-thumb:hover{border-color:#7c5cff88}
+.page-thumb .pn{position:absolute;left:3px;bottom:2px;font-size:10px;background:#000a;color:#fff;border-radius:4px;padding:0 4px}
+.page-add{height:58px;width:44px;border-radius:7px;border:1px dashed var(--line);background:var(--card);color:var(--muted);display:grid;place-items:center;flex:none}
+.page-add:hover{border-color:var(--accent);color:var(--text)}

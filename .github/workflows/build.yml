@@ -58,9 +58,11 @@ jobs:
         shell: pwsh
         run: |
           $env:LOCALAPPDATA = "$PWD\selftest-data"
+          New-Item -ItemType Directory -Force -Path "$PWD\selftest-data\BgRemover\models" | Out-Null
+          Copy-Item "ci-models\BgRemover\models\*.onnx" "$PWD\selftest-data\BgRemover\models\"
           $p = Start-Process -FilePath "dist\EGStudio\EGStudio.exe" -ArgumentList "--uitest" -PassThru
           $f = "$PWD\selftest-data\BgRemover\uitest.txt"
-          for ($i = 0; $i -lt 120 -and -not (Test-Path $f); $i++) { Start-Sleep -Seconds 1 }
+          for ($i = 0; $i -lt 240 -and -not (Test-Path $f); $i++) { Start-Sleep -Seconds 1 }
           Start-Sleep -Seconds 2
           if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
           if (Test-Path $f) { $r = Get-Content $f -Raw } else { $r = "NO RESULT FILE"; if (Test-Path "$PWD\selftest-data\BgRemover\log.txt") { $r += " LOG: " + (Get-Content "$PWD\selftest-data\BgRemover\log.txt" -Raw) } }

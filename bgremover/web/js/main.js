@@ -36,7 +36,9 @@ window.MAIN = (() => {
       const a = await API.call('load_autosave');
       if (a && a.data) {
         const d = JSON.parse(a.data);
-        const card = h('div.continue-card', a.thumb ? h('img', { src: a.thumb }) : '', h('div', h('b', 'Continue where you left off'), h('div.muted.small', `${esc(d.name || 'Untitled design')} · ${d.width}×${d.height}`)));
+        const p0 = d.pages ? d.pages[0] : d;
+        const np = d.pages ? d.pages.length : 1;
+        const card = h('div.continue-card', a.thumb ? h('img', { src: a.thumb }) : '', h('div', h('b', 'Continue where you left off'), h('div.muted.small', `${esc(d.name || 'Untitled design')} · ${p0.width}×${p0.height}${np > 1 ? ` · ${np} pages` : ''}`)));
         card.onclick = async () => { await openDoc(d, d.path || ''); };
         cont.append(card);
       }
@@ -58,6 +60,7 @@ window.MAIN = (() => {
   function newDesign(w, h2) {
     docPath = ''; $('#docName').value = 'Untitled design';
     E.newDesign(w, h2, '#ffffff');
+    PAGES.reset();
     hideHome();
     PANELS.show('templates');
     dirty = false; updateTitle();
@@ -99,12 +102,20 @@ window.MAIN = (() => {
       info.textContent = `${Math.round(E.W * st.mult)} × ${Math.round(E.H * st.mult)} px`;
     };
     draw();
-    body.append(h('div.field', h('label', 'File type'), fmt), h('div.field', h('label', 'Size'), size, info), qRow, trRow,
+    st.all = false;
+    const allRow = h('div.field');
+    if (PAGES.count > 1) {
+      const seg = h('div.seg');
+      const drawAll = () => { seg.innerHTML = ''; [[false, 'This page'], [true, `All ${PAGES.count} pages`]].forEach(([v, l]) => seg.append(h('button' + (st.all === v ? '.on' : ''), { onclick: () => { st.all = v; drawAll(); } }, l))); };
+      drawAll(); allRow.append(h('label', 'Pages'), seg);
+    }
+    body.append(allRow, h('div.field', h('label', 'File type'), fmt), h('div.field', h('label', 'Size'), size, info), qRow, trRow,
       h('div.note', 'JPG is smallest and what most marketplaces prefer. PNG keeps transparency.'));
     const ok = await U.modal({ title: 'Download', body, buttons: [{ label: 'Cancel', value: false }, { label: 'Download', value: true, primary: true }] });
     if (!ok) return;
-    U.lsSet('eg_export', JSON.stringify(st));
+    U.lsSet('eg_export', JSON.stringify({ ...st, all: undefined }));
     const format = st.format === 'jpg' ? 'jpeg' : st.format;
+    if (st.all) return exportAll(st, format);
     U.busy('Rendering…');
     let url;
     try { url = await E.exportDataURL({ format, multiplier: st.mult, quality: st.quality, transparent: st.transparent && st.format !== 'jpg' }); }
@@ -117,6 +128,25 @@ window.MAIN = (() => {
       await API.call('save_data_url', p, url);
       U.toast('Saved ' + p.split(/[\\/]/).pop(), 'ok');
     } else U.downloadDataURL(name, url);
+  }
+
+  async function exportAll(st, format) {
+    const base = ($('#docName').value || 'design').replace(/[\\/:*?"<>|]+/g, '_');
+    let dir = '';
+    if (API.native()) { dir = await API.call('pick_folder'); if (!dir) return; }
+    const docs = PAGES.data();
+    U.busy('Rendering pages…', 0);
+    try {
+      for (let i = 0; i < docs.length; i++) {
+        U.busyUpdate(`Page ${i + 1} of ${docs.length}`, i / docs.length);
+        const url = await E.renderDoc(docs[i], { format, multiplier: st.mult, quality: st.quality, transparent: st.transparent && st.format !== 'jpg' });
+        const name = `${base}-${i + 1}.${st.format}`;
+        if (dir) await API.call('save_data_url', await API.call('join', dir, name), url);
+        else { U.downloadDataURL(name, url); await U.sleep(300); }
+      }
+    } finally { U.busy(false); }
+    U.toast(`Saved ${docs.length} pages`, 'ok');
+    if (dir) API.call('open_path', dir);
   }
 
   async function settingsDialog() {
@@ -136,9 +166,8 @@ window.MAIN = (() => {
 
   // ------------------------------------------------------------ projects
   function projectData() {
-    const d = E.toJSON();
-    d.name = $('#docName').value || 'Untitled design';
-    return d;
+    const pages = PAGES.data();
+    return { app: 'EG Studio', v: 2, name: $('#docName').value || 'Untitled design', width: pages[0].width, height: pages[0].height, pages, cur: PAGES.cur };
   }
   async function saveProject(as = false) {
     const d = projectData();
@@ -179,8 +208,8 @@ window.MAIN = (() => {
     finally { U.busy(false); }
   }
   async function openDoc(d, path) {
-    if (!d || !d.canvas) throw new Error('Not an EG Studio project');
-    await E.load(d);
+    if (!d || !(d.canvas || d.pages)) throw new Error('Not an EG Studio project');
+    await PAGES.loadAll(d.pages || [d], d.cur || 0);
     docPath = path || '';
     $('#docName').value = d.name || 'Untitled design';
     hideHome();
@@ -330,6 +359,8 @@ window.MAIN = (() => {
     E.init();
     PANELS.init();
     CTX.init();
+    PAGES.init();
+    PAGES.reset();
     setupDnD();
     setupKeys();
     setupContextMenu();
