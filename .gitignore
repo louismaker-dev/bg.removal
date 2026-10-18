@@ -1,0 +1,7 @@
+ci-models/
+ci_out/
+ci_test.jpg
+build/
+dist/
+*.spec
+__pycache__/

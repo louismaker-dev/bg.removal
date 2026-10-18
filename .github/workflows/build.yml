@@ -1,0 +1,68 @@
+name: Build Windows app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller==6.*
+
+      - name: Check onnxruntime
+        run: python -c "import onnxruntime as o; print(o.__version__, o.get_available_providers())"
+
+      - name: Cache test model
+        uses: actions/cache@v4
+        with:
+          path: ci-models
+          key: lite-model-v1
+
+      - name: Engine smoke test (lite model)
+        run: python ci_test.py
+
+      - name: Build exe
+        run: python build.py
+
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path dist/BgRemover -DestinationPath BgRemover-win64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BgRemover-win64
+          path: BgRemover-win64.zip
+
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = python -c "from bgremover.version import VERSION; print(VERSION)"
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}.${{ github.run_number }}
+          name: BG Remover ${{ steps.ver.outputs.version }} (build ${{ github.run_number }})
+          body: |
+            Download **BgRemover-win64.zip**, unzip it anywhere, and run `BgRemover.exe`.
+            First run downloads the AI model once; after that it works fully offline.
+          files: BgRemover-win64.zip
+          make_latest: true
