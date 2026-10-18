@@ -103,6 +103,7 @@ window.FX = (() => {
     if (a.blur) list.push(new F.Blur({ blur: a.blur }));
     if (a.grayscale) list.push(new F.Grayscale());
     if (a.sepia) list.push(new F.Sepia());
+    if (a.removeWhite) list.push(new F.RemoveColor({ color: '#ffffff', distance: a.removeWhite }));
     img.filters = list;
     try { img.applyFilters(); } catch (e) { console.warn(e); }
   }
@@ -141,12 +142,32 @@ window.FX = (() => {
   }
 
   // ---------------------------------------------------------- corners
+  // Photo frames: rounded corners or a shape mask (circle, star, heart…)
+  const MASKS = ['none', 'circle', 'oval', 'hexagon', 'star', 'heart', 'blob', 'diamond', 'arch'];
   function applyRadius(o) {
-    const r = o.radius || 0;
     if (o.type !== 'image') return;
-    if (!r) { o.clipPath = undefined; o.dirty = true; return; }
-    const px = Math.min(o.width, o.height) * r / 100;
-    o.clipPath = new fabric.Rect({ width: o.width, height: o.height, rx: px, ry: px, originX: 'center', originY: 'center' });
+    const w = o.width, hh = o.height, m = Math.min(w, hh);
+    const mask = o.adjust && o.adjust.mask;
+    const r = o.radius || 0;
+    let cp;
+    // scale an all-coordinate-pairs path (M/C/L/Z only) to the image size
+    const fitPath = (d, bw, bh) => {
+      let i = 0;
+      const sd = d.replace(/-?\d+(\.\d+)?/g, n => (i++ % 2 === 0 ? (+n) * w / bw : (+n) * hh / bh).toFixed(2));
+      const p = new fabric.Path(sd, { originX: 'center', originY: 'center' });
+      p.set({ left: 0, top: 0 });
+      return p;
+    };
+    if (mask === 'circle') cp = new fabric.Circle({ radius: m / 2, originX: 'center', originY: 'center' });
+    else if (mask === 'oval') cp = new fabric.Ellipse({ rx: w / 2, ry: hh / 2, originX: 'center', originY: 'center' });
+    else if (mask === 'hexagon') cp = new fabric.Polygon(EL.polyPts(6, m / 2, 0), { originX: 'center', originY: 'center' });
+    else if (mask === 'diamond') cp = new fabric.Polygon(EL.polyPts(4, m / 2), { originX: 'center', originY: 'center' });
+    else if (mask === 'star') cp = new fabric.Polygon(EL.starPts(5, m / 2, m / 4.4), { originX: 'center', originY: 'center' });
+    else if (mask === 'heart') cp = fitPath('M 200 360 C 60 260 0 190 0 110 C 0 40 55 0 110 0 C 150 0 180 20 200 55 C 220 20 250 0 290 0 C 345 0 400 40 400 110 C 400 190 340 260 200 360 Z', 400, 360);
+    else if (mask === 'blob') cp = fitPath('M 230 10 C 330 20 410 90 400 200 C 390 300 300 380 190 370 C 80 360 0 290 10 180 C 20 70 120 0 230 10 Z', 410, 372);
+    else if (mask === 'arch') { const rx = w / 2, ry = Math.min(w / 2, hh / 2); cp = new fabric.Path(`M 0 ${hh} V ${ry} A ${rx} ${ry} 0 0 1 ${w} ${ry} V ${hh} Z`, { originX: 'center', originY: 'center' }); cp.set({ left: 0, top: 0 }); }
+    else if (r) { const px = m * r / 100; cp = new fabric.Rect({ width: w, height: hh, rx: px, ry: px, originX: 'center', originY: 'center' }); }
+    o.clipPath = cp || undefined;
     o.dirty = true;
   }
 
@@ -192,6 +213,28 @@ window.FX = (() => {
     E.commit();
   }
 
-  return { applyCrop, setCrop, removeBg, restoreOriginal, rebuildImage, makeOutline, setOutline, applyAdjust, setAdjust,
+  // ---------------------------------------------------------- curved text
+  function setCurve(t, c) {
+    t.curve = c;
+    if (!c) { t.set({ path: null }); t.initDimensions(); t.setCoords(); E.canvas.requestRenderAll(); return; }
+    // measure the text on a straight line first
+    t.set({ path: null }); t.initDimensions();
+    const w = Math.max(...t._textLines.map((_, i) => t.getLineWidth(i)));
+    const theta = Math.min(Math.abs(c), 100) / 100 * Math.PI * 1.6;
+    const R = w / theta;
+    const a0 = -Math.PI / 2 - theta / 2, a1 = -Math.PI / 2 + theta / 2;
+    let d;
+    if (c > 0) d = `M ${R * Math.cos(a0)} ${R * Math.sin(a0) + R} A ${R} ${R} 0 ${theta > Math.PI ? 1 : 0} 1 ${R * Math.cos(a1)} ${R * Math.sin(a1) + R}`;
+    else {
+      const b0 = Math.PI / 2 + theta / 2, b1 = Math.PI / 2 - theta / 2;
+      d = `M ${R * Math.cos(b0)} ${R * Math.sin(b0) - R} A ${R} ${R} 0 ${theta > Math.PI ? 1 : 0} 0 ${R * Math.cos(b1)} ${R * Math.sin(b1) - R}`;
+    }
+    const path = new fabric.Path(d, { visible: false, fill: '', stroke: '' });
+    t.set({ path, pathAlign: 'center', pathSide: 'left', pathStartOffset: 0 });
+    t.initDimensions(); t.setCoords();
+    E.canvas.requestRenderAll();
+  }
+
+  return { setCurve, MASKS, applyCrop, setCrop, removeBg, restoreOriginal, rebuildImage, makeOutline, setOutline, applyAdjust, setAdjust,
     FILTER_PRESETS, applyRadius, SHADOWS, setShadow, TEXT_FX, textEffect, aiOpts, setAiOpts };
 })();

@@ -149,6 +149,16 @@ window.MAIN = (() => {
     if (dir) API.call('open_path', dir);
   }
 
+  function shortcutsDialog() {
+    const rows = [['Undo / Redo', 'Ctrl+Z / Ctrl+Y'], ['Copy / Paste / Duplicate', 'Ctrl+C / Ctrl+V / Ctrl+D'], ['Paste a screenshot or photo', 'Ctrl+V'],
+      ['Delete', 'Del'], ['Move a little / a lot', 'Arrows / Shift+Arrows'], ['Group / Ungroup', 'Ctrl+G / Ctrl+Shift+G'],
+      ['Bring forward / Send backward', '] / ['], ['Select all', 'Ctrl+A'], ['Zoom', 'Ctrl+wheel, Ctrl + / Ctrl -'], ['Fit page', 'Ctrl+0'],
+      ['Pan around', 'Space+drag or middle mouse'], ['Edit badge text', 'Double-click the badge'], ['Save / Open', 'Ctrl+S / Ctrl+O'],
+      ['Download image', 'Ctrl+E'], ['New design', 'Ctrl+N'], ['Text panel', 'T']];
+    U.modal({ title: 'Keyboard shortcuts', body: `<table class="csv">${rows.map(r => `<tr><td>${r[0]}</td><td><b>${r[1]}</b></td></tr>`).join('')}</table>`,
+      buttons: [{ label: 'Close', value: true, primary: true }] });
+  }
+
   async function settingsDialog() {
     const inf = await API.getInfo(true);
     const g = h('input', { type: 'checkbox' }); g.checked = (inf.settings && inf.settings.use_gpu) !== false;
@@ -378,7 +388,7 @@ window.MAIN = (() => {
       const a = e.target.closest('button'); if (!a) return;
       menu.classList.remove('open');
       ({ new: showHome, open: openProject, save: () => saveProject(false), saveas: () => saveProject(true),
-        resize: resizeDialog, export: exportDialog, settings: settingsDialog })[a.dataset.act]();
+        resize: resizeDialog, export: exportDialog, settings: settingsDialog, keys: shortcutsDialog })[a.dataset.act]();
     };
     $('#docName').addEventListener('change', () => { dirty = true; updateTitle(); autosave(); });
     $$('[data-home]').forEach(b => b.onclick = async () => {

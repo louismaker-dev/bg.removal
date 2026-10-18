@@ -84,10 +84,11 @@ window.CTX = (() => {
       const t = o.text; setAll(o, { text: t === t.toUpperCase() ? t.toLowerCase().replace(/(^|\s)\S/g, s => s.toUpperCase()) : t.toUpperCase() });
     });
 
-    const spacing = btn(icon('sliders-horizontal') + 'Spacing', 'Letter & line spacing', e => {
+    const spacing = btn(icon('sliders-horizontal') + 'Spacing', 'Letter spacing, line height, curve', e => {
       const box = h('div');
       box.append(U.slider('Letter spacing', -200, 1000, 10, o.charSpacing || 0, (v, f) => setAll(o, { charSpacing: v }, f)));
       box.append(U.slider('Line height', 0.6, 2.5, 0.05, o.lineHeight || 1.16, (v, f) => setAll(o, { lineHeight: v }, f), v => v.toFixed(2)));
+      if (o.type === 'textbox') box.append(U.slider('Curve', -100, 100, 1, o.curve || 0, (v, f) => { FX.setCurve(o, v); if (f) E.commit(); }));
       U.popover(e.currentTarget, box);
     });
     const fx = btn(icon('sparkles') + 'Effects', 'Text effects', e => textEffects(e.currentTarget, o));
@@ -147,8 +148,13 @@ window.CTX = (() => {
     }
     g1.append(btn(icon('crop') + 'Crop', 'Crop the photo', e => cropPop(e.currentTarget, o)));
     g1.append(btn(icon('blend') + 'Shadow', 'Drop shadow', e => shadowPop(e.currentTarget, o)));
-    g1.append(btn(icon('square') + 'Corners', 'Rounded corners', e => {
-      U.popover(e.currentTarget, U.slider('Corner radius', 0, 50, 1, o.radius || 0, (v, f) => { o.radius = v; FX.applyRadius(o); R(); if (f) E.commit(); }, v => v + '%'));
+    g1.append(btn(icon('square') + 'Frame', 'Rounded corners or a shape frame', e => {
+      const box = h('div', h('h4', 'Shape'));
+      const g = h('div.preset-grid');
+      FX.MASKS.forEach(m => g.append(h('button' + (((o.adjust && o.adjust.mask) || 'none') === m ? '.on' : ''), { onclick: () => {
+        o.adjust = { ...(o.adjust || {}), mask: m === 'none' ? undefined : m }; FX.applyRadius(o); R(); E.commit(); U.closePop(); } }, m[0].toUpperCase() + m.slice(1))));
+      box.append(g, h('h4', 'Corners'), U.slider('Corner radius', 0, 50, 1, o.radius || 0, (v, f) => { o.radius = v; FX.applyRadius(o); R(); if (f) E.commit(); }, v => v + '%'));
+      U.popover(e.currentTarget, box);
     }));
     const g2 = group(
       btn('i:flip-horizontal-2', 'Flip horizontal', () => E.flip('x')),
@@ -166,7 +172,7 @@ window.CTX = (() => {
     const box = h('div');
     box.append(h('h4', 'Filters'));
     const pg = h('div.preset-grid');
-    Object.keys(FX.FILTER_PRESETS).forEach(k => pg.append(h('button', { onclick: () => { o.adjust = { ...FX.FILTER_PRESETS[k] }; FX.applyAdjust(o); R(); E.commit(); U.closePop(); adjustPop(anchor, o); } }, k[0].toUpperCase() + k.slice(1))));
+    Object.keys(FX.FILTER_PRESETS).forEach(k => pg.append(h('button', { onclick: () => { o.adjust = { ...FX.FILTER_PRESETS[k], mask: (o.adjust || {}).mask }; FX.applyAdjust(o); R(); E.commit(); U.closePop(); adjustPop(anchor, o); } }, k[0].toUpperCase() + k.slice(1))));
     box.append(pg, h('h4', 'Adjust'));
     const pct = v => Math.round(v * 100);
     box.append(U.slider('Brightness', -0.5, 0.5, 0.01, a.brightness || 0, (v, f) => FX.setAdjust(o, { brightness: v }, f), pct));
@@ -175,8 +181,9 @@ window.CTX = (() => {
     box.append(U.slider('Vibrance', -1, 1, 0.01, a.vibrance || 0, (v, f) => FX.setAdjust(o, { vibrance: v }, f), pct));
     box.append(U.slider('Warmth', -0.2, 0.2, 0.005, -(a.hue || 0), (v, f) => FX.setAdjust(o, { hue: -v }, f), v => Math.round(v * 500)));
     box.append(U.slider('Blur', 0, 1, 0.01, a.blur || 0, (v, f) => FX.setAdjust(o, { blur: v }, f), pct));
+    box.append(U.slider('Remove white', 0, 0.5, 0.01, a.removeWhite || 0, (v, f) => FX.setAdjust(o, { removeWhite: v }, f), pct));
     box.append(U.slider('Transparency', 0, 1, 0.01, o.opacity, (v, f) => { o.opacity = v; R(); if (f) E.commit(); }, pct));
-    box.append(h('button.chip-btn', { onclick: () => { o.adjust = {}; FX.applyAdjust(o); R(); E.commit(); U.closePop(); } }, 'Reset'));
+    box.append(h('button.chip-btn', { onclick: () => { o.adjust = { mask: (o.adjust || {}).mask }; FX.applyAdjust(o); R(); E.commit(); U.closePop(); } }, 'Reset'));
     U.popover(anchor, box);
   }
 
