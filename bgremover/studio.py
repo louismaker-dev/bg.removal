@@ -316,8 +316,8 @@ UI_TEST_JS = """
     out.roundtrip = echo && echo.ok === false;
   } catch (e) { out.err = String(e && e.stack || e); }
   out.jsErrors = window.__errs || [];
-  return JSON.stringify(out);
-})()
+  window.__uitest = JSON.stringify(out);
+})(); 1
 """
 
 
@@ -326,7 +326,13 @@ def _uitest(window) -> None:
     try:
         window.events.loaded.wait(60)
         time.sleep(2)
-        res = window.evaluate_js(UI_TEST_JS)
+        window.evaluate_js(UI_TEST_JS)
+        res = None
+        for _ in range(120):
+            time.sleep(1)
+            res = window.evaluate_js("window.__uitest || ''")
+            if res:
+                break
         out.write_text("RESULT " + str(res), encoding="utf-8")
     except Exception:  # noqa: BLE001
         out.write_text("FAIL " + traceback.format_exc(), encoding="utf-8")
