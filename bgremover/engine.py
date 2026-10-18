@@ -306,8 +306,11 @@ class Engine:
 
     # ------------------------------------------------------------- pipeline
     def process(self, path: str, s: Settings, log: Progress = None):
-        """Return (rgba uint8 HxWx4, rgb uint8 composited or None, alpha float)."""
-        rgb = load_rgb(path)
+        """Cut out an image file. Returns RGBA uint8."""
+        return self.process_rgb(load_rgb(path), s, log)
+
+    def process_rgb(self, rgb: np.ndarray, s: Settings, log: Progress = None):
+        """rgb float32 0..1 -> RGBA uint8 cut-out."""
         alpha = self.predict(rgb, s, log)
         if log:
             log("Polishing edges...")

@@ -1,4 +1,4 @@
-name: Build Windows app
+name: Build EG Studio
 
 on:
   push:
@@ -37,17 +37,31 @@ jobs:
       - name: Engine smoke test (lite model)
         run: python ci_test.py
 
+      - name: Check app imports
+        run: python -c "import webview; from bgremover.studio import Api, web_dir; assert (web_dir()/'index.html').exists(); print(Api().info())"
+
       - name: Build exe
         run: python build.py
 
+      - name: Self-test the built exe
+        shell: pwsh
+        run: |
+          $env:LOCALAPPDATA = "$PWD\selftest-data"
+          $p = Start-Process -FilePath "dist\EGStudio\EGStudio.exe" -ArgumentList "--selftest" -Wait -PassThru
+          $r = Get-Content "$PWD\selftest-data\BgRemover\selftest.txt" -Raw
+          Write-Host $r
+          $short = $r.Substring(0, [Math]::Min(900, $r.Length)) -replace "`r?`n", " | "
+          if ($p.ExitCode -ne 0 -or -not $r.StartsWith("OK")) { Write-Host "::error::$short"; exit 1 }
+          Write-Host "::notice::$short"
+
       - name: Zip
         shell: pwsh
-        run: Compress-Archive -Path dist/BgRemover -DestinationPath BgRemover-win64.zip
+        run: Compress-Archive -Path dist/EGStudio -DestinationPath EGStudio-win64.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: BgRemover-win64
-          path: BgRemover-win64.zip
+          name: EGStudio-win64
+          path: EGStudio-win64.zip
 
       - name: Read version
         id: ver
@@ -60,9 +74,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.ver.outputs.version }}.${{ github.run_number }}
-          name: BG Remover ${{ steps.ver.outputs.version }} (build ${{ github.run_number }})
+          name: EG Studio ${{ steps.ver.outputs.version }} (build ${{ github.run_number }})
           body: |
-            Download **BgRemover-win64.zip**, unzip it anywhere, and run `BgRemover.exe`.
-            First run downloads the AI model once; after that it works fully offline.
-          files: BgRemover-win64.zip
+            Download **EGStudio-win64.zip**, unzip it anywhere, and run `EGStudio.exe`.
+            Offline listing-image editor with AI background removal. The AI model downloads once on first use.
+          files: EGStudio-win64.zip
           make_latest: true

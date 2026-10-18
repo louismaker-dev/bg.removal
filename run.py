@@ -1,4 +1,4 @@
-from bgremover.app import main
+from bgremover.studio import main
 
 if __name__ == "__main__":
     main()
