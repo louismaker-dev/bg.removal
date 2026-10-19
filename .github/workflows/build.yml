@@ -68,7 +68,9 @@ jobs:
       - name: Mark files as downloaded from the internet (like a real user's zip)
         shell: pwsh
         run: |
-          Get-ChildItem -Recurse dist\EGStudio -File | ForEach-Object { Set-Content -Path $_.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3" }
+          # everything except the launcher exe (a marked exe would pop a "security warning" prompt in CI;
+          # real users click through that, the crash comes from the marked DLLs)
+          Get-ChildItem -Recurse dist\EGStudio -File | Where-Object { $_.Name -ne "EGStudio.exe" } | ForEach-Object { Set-Content -Path $_.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3" }
           $n = (Get-ChildItem -Recurse dist\EGStudio -File | Where-Object { Get-Item $_.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue }).Count
           Write-Host "Marked $n files"
 
@@ -76,6 +78,7 @@ jobs:
         shell: pwsh
         continue-on-error: true
         run: |
+          $ErrorActionPreference = "Continue"
           Copy-Item -Recurse dist\EGStudio repro
           Remove-Item repro\EGStudio.exe.config
           $env:EGS_NO_UNBLOCK = "1"
@@ -92,6 +95,8 @@ jobs:
       - name: UI test the built exe (real window + WebView2)
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Continue"
+          trap { Write-Host "::error title=UI test step::$($_.Exception.Message) at line $($_.InvocationInfo.ScriptLineNumber)"; exit 1 }
           $env:LOCALAPPDATA = "$PWD\selftest-data"
           New-Item -ItemType Directory -Force -Path "$PWD\selftest-data\BgRemover\models" | Out-Null
           Copy-Item "ci-models\BgRemover\models\*.onnx" "$PWD\selftest-data\BgRemover\models\"
