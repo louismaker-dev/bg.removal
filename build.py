@@ -19,3 +19,9 @@ PyInstaller.__main__.run([
     "--add-data=bgremover/build.txt;bgremover",
     "--hidden-import=clr",
 ])
+
+# .NET Framework: allow loading our own DLLs even if Windows marked them as
+# downloaded from the internet (belt and braces with the unblock in run.py).
+import shutil  # noqa: E402
+
+shutil.copy("EGStudio.exe.config", "dist/EGStudio/EGStudio.exe.config")

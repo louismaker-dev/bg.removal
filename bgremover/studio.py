@@ -367,8 +367,28 @@ def main() -> None:
     api._window = win
     if "--uitest" in sys.argv:
         threading.Thread(target=_uitest, args=(win,), daemon=True).start()
-    webview.start(http_server=True, debug="--debug" in sys.argv, private_mode=False,
-                  storage_path=str(eng.app_dir() / "webview"))
+    try:
+        webview.start(http_server=True, debug="--debug" in sys.argv, private_mode=False,
+                      storage_path=str(eng.app_dir() / "webview"))
+    except Exception:  # noqa: BLE001
+        traceback.print_exc()
+        _fatal("EG Studio couldn't open its window.\n\n"
+               "Try this:\n"
+               "1. Delete the EGStudio folder.\n"
+               "2. Right-click EGStudio-win64.zip > Properties > tick Unblock > OK.\n"
+               "3. Unzip again and run EGStudio.exe.\n\n"
+               "If it still fails, install the Microsoft Edge WebView2 Runtime "
+               "(free, from microsoft.com) and try again.\n\n"
+               f"Details are in {eng.app_dir() / 'log.txt'}")
+        sys.exit(1)
+
+
+def _fatal(msg: str) -> None:
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(None, msg, "EG Studio", 0x10)
+    except Exception:  # noqa: BLE001
+        print(msg)
 
 
 UI_TEST_JS = """

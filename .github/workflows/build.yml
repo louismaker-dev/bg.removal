@@ -65,6 +65,30 @@ jobs:
           if ($p.ExitCode -ne 0 -or -not $r.StartsWith("OK")) { Write-Host "::error::$short"; exit 1 }
           Write-Host "::notice::$short"
 
+      - name: Mark files as downloaded from the internet (like a real user's zip)
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse dist\EGStudio -File | ForEach-Object { Set-Content -Path $_.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3" }
+          $n = (Get-ChildItem -Recurse dist\EGStudio -File | Where-Object { Get-Item $_.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue }).Count
+          Write-Host "Marked $n files"
+
+      - name: Repro check (fix switched off, expected to fail)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Copy-Item -Recurse dist\EGStudio repro
+          Remove-Item repro\EGStudio.exe.config
+          $env:EGS_NO_UNBLOCK = "1"
+          $env:LOCALAPPDATA = "$PWD\repro-data"
+          $p = Start-Process -FilePath "repro\EGStudio.exe" -ArgumentList "--uitest" -PassThru
+          $f = "$PWD\repro-data\BgRemover\uitest.txt"
+          for ($i = 0; $i -lt 40 -and -not (Test-Path $f) -and -not $p.HasExited; $i++) { Start-Sleep -Seconds 1 }
+          if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+          $log = if (Test-Path "$PWD\repro-data\BgRemover\log.txt") { (Get-Content "$PWD\repro-data\BgRemover\log.txt" -Raw) } else { "" }
+          $res = if (Test-Path $f) { "window opened" } else { "no window" }
+          $short = ("$res | " + $log.Substring([Math]::Max(0, $log.Length - 400))) -replace "`r?`n", " | "
+          Write-Host "::notice title=Repro (fix off)::$short"
+
       - name: UI test the built exe (real window + WebView2)
         shell: pwsh
         run: |
@@ -80,6 +104,7 @@ jobs:
           Write-Host $r
           $short = $r.Substring(0, [Math]::Min(1500, $r.Length)) -replace "`r?`n", " | "
           Write-Host "::notice title=UI test::$short"
+          if (-not $r.StartsWith("RESULT {")) { Write-Host "::error title=UI test::window did not open"; exit 1 }
 
       - name: Zip
         shell: pwsh
